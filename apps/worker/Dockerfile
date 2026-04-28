@@ -9,6 +9,8 @@ WORKDIR /app
 
 COPY . .
 
-RUN pnpm install
+COPY docker/dev-entrypoint.sh /usr/local/bin/dev-entrypoint
 
-CMD ["pnpm", "--filter", "@balancesphere/worker", "dev"]
+RUN chmod +x /usr/local/bin/dev-entrypoint && pnpm install
+
+CMD ["dev-entrypoint", "@balancesphere/worker", "dev"]

@@ -9,10 +9,16 @@
   },
   "dependencies": {
     "@balancesphere/shared": "workspace:*",
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.6.0",
     "clsx": "^2.1.1",
     "next": "^15.0.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "tailwind-merge": "^2.5.5"
+    "tailwind-merge": "^2.5.5",
+    "three": "^0.184.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.184.0"
   }
 }

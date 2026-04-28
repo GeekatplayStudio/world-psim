@@ -9,8 +9,10 @@ WORKDIR /app
 
 COPY . .
 
-RUN pnpm install
+COPY docker/dev-entrypoint.sh /usr/local/bin/dev-entrypoint
+
+RUN chmod +x /usr/local/bin/dev-entrypoint && pnpm install
 
 EXPOSE 4000
 
-CMD ["pnpm", "--filter", "@balancesphere/api", "dev"]
+CMD ["dev-entrypoint", "@balancesphere/api", "dev"]

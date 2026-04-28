@@ -30,19 +30,19 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${headingFont.variable} ${bodyFont.variable}`}>
       <body className="font-[var(--font-body)] text-foreground antialiased">
-        <div className="mx-auto flex min-h-screen max-w-7xl flex-col px-6 py-6 sm:px-8 lg:px-10">
-          <header className="mb-10 flex flex-col gap-6 rounded-[2rem] border border-white/10 bg-white/5 px-6 py-5 shadow-panel backdrop-blur md:flex-row md:items-center md:justify-between">
+        <div className="mx-auto flex min-h-screen max-w-none flex-col px-4 py-4 sm:px-6 lg:px-8">
+          <header className="sticky top-4 z-20 mb-4 flex flex-col gap-4 rounded-[1.5rem] border border-white/10 bg-slate-950/70 px-4 py-3 shadow-panel backdrop-blur md:flex-row md:items-center md:justify-between">
             <div>
               <Link href="/" className="inline-flex items-center gap-3">
-                <span className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-cyan-300/35 bg-cyan-300/10 text-xs font-semibold uppercase tracking-[0.28em] text-cyan-100">
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-cyan-300/35 bg-cyan-300/10 text-[11px] font-semibold uppercase tracking-[0.28em] text-cyan-100">
                   BS
                 </span>
                 <div>
-                  <p className="font-[var(--font-heading)] text-3xl tracking-wide text-white">
+                  <p className="font-[var(--font-heading)] text-2xl tracking-wide text-white">
                     BalanceSphere
                   </p>
-                  <p className="text-sm text-slate-300">
-                    Geopolitical network simulation scaffold
+                  <p className="text-xs uppercase tracking-[0.24em] text-slate-400">
+                    Interactive geopolitical simulation
                   </p>
                 </div>
               </Link>
