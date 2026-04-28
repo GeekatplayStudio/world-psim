@@ -1,7 +1,7 @@
 "use client";
 
 import { Canvas } from "@react-three/fiber";
-import { useTransition, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -12,8 +12,14 @@ import {
   simulationRelationships
 } from "./simulation-data";
 import { SimulationScene } from "./SimulationScene";
+import type { BriefingSource } from "./simulation-types";
 
 type ZoomStage = "world" | "regional" | "focus";
+
+type BriefingFeedResponse = {
+  items: BriefingSource[];
+  mode: "live" | "seed";
+};
 
 function MetricBar({ label, value, tone }: { label: string; value: number; tone: string }) {
   return (
@@ -67,11 +73,26 @@ function SceneChip({ label, value }: { label: string; value: string }) {
   );
 }
 
+function getBriefingStatusLabel(mode: "idle" | "loading" | "live" | "seed") {
+  switch (mode) {
+    case "loading":
+      return "Refreshing";
+    case "live":
+      return "Live feed";
+    case "seed":
+      return "Fallback";
+    default:
+      return "Standby";
+  }
+}
+
 export default function SimulationDashboard() {
   const [selectedActorId, setSelectedActorId] = useState<string | null>(null);
   const [cameraDistance, setCameraDistance] = useState(
     Math.hypot(...simulationHomeCamera)
   );
+  const [briefingItems, setBriefingItems] = useState<BriefingSource[]>([]);
+  const [briefingMode, setBriefingMode] = useState<"idle" | "loading" | "live" | "seed">("idle");
   const [, startTransition] = useTransition();
   const selectedActor = selectedActorId ? actorIndex[selectedActorId] ?? null : null;
   const activeConflicts = simulationRelationships.filter(
@@ -81,6 +102,47 @@ export default function SimulationDashboard() {
   const showWorldRail = zoomStage !== "focus";
   const showInspector = Boolean(selectedActor) && zoomStage !== "world";
   const worldZones = new Set(simulationActors.map((actor) => actor.zone)).size;
+
+  useEffect(() => {
+    if (!selectedActor) {
+      setBriefingItems([]);
+      setBriefingMode("idle");
+      return;
+    }
+
+    const controller = new AbortController();
+
+    setBriefingItems(selectedActor.briefingSources);
+    setBriefingMode("loading");
+
+    void fetch(`/api/briefings/${selectedActor.id}`, {
+      signal: controller.signal,
+      cache: "no-store"
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error(`Briefing feed request failed with ${response.status}`);
+        }
+
+        return (await response.json()) as BriefingFeedResponse;
+      })
+      .then((payload) => {
+        setBriefingItems(payload.items);
+        setBriefingMode(payload.mode);
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+
+        setBriefingItems(selectedActor.briefingSources);
+        setBriefingMode("seed");
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, [selectedActor]);
 
   const handleSelectActor = (actorId: string) => {
     startTransition(() => {
@@ -268,10 +330,10 @@ export default function SimulationDashboard() {
                   <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
                     <div className="mb-4 flex items-center justify-between">
                       <p className="text-[10px] uppercase tracking-[0.32em] text-slate-500">Briefings</p>
-                      <span className="text-xs text-slate-500">Latest sources</span>
+                      <span className="text-xs text-slate-500">{getBriefingStatusLabel(briefingMode)}</span>
                     </div>
                     <div className="space-y-3">
-                      {selectedActor.briefingSources.map((briefing) => (
+                      {briefingItems.map((briefing) => (
                         <article
                           key={briefing.id}
                           className="rounded-[1.25rem] border border-white/10 bg-white/[0.03] p-4"
