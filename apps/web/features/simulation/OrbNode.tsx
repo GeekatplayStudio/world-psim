@@ -57,7 +57,7 @@ export function OrbNode({ actor, isSelected, onSelect }: OrbNodeProps) {
         <meshBasicMaterial
           color={actor.accent}
           transparent
-          opacity={isSelected ? 0.11 : isHovered ? 0.06 : 0.025}
+          opacity={isSelected ? 0.1 : isHovered ? 0.05 : 0.02}
           wireframe
         />
       </mesh>
@@ -81,9 +81,9 @@ export function OrbNode({ actor, isSelected, onSelect }: OrbNodeProps) {
         <meshStandardMaterial
           color={actor.color}
           emissive={actor.accent}
-          emissiveIntensity={isSelected ? 0.9 : isHovered ? 0.6 : 0.35}
+          emissiveIntensity={isSelected ? 0.8 : isHovered ? 0.48 : 0.24}
           metalness={0.04}
-          roughness={0.68}
+          roughness={0.76}
         />
       </mesh>
 

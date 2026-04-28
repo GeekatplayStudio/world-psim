@@ -6,8 +6,13 @@ import type {
   SimulationActor,
   SimulationRelationship
 } from "./simulation-types";
+import {
+  buildGeneratedCountryActors,
+  countryByCodeIndex
+} from "./simulation-country-layer";
 
-const earthRadius = 7.05;
+const earthRadius = 7.45;
+const actorShellOffset = 1.05;
 
 const relationshipColors: Record<SimulationRelationship["relationshipType"], string> = {
   alliance: "#20d67b",
@@ -69,11 +74,11 @@ function makeSource(
 function globePosition(
   latitude: number,
   longitude: number,
-  altitude = 0.55
+  altitude = 0.9
 ): [number, number, number] {
   const phi = ((90 - latitude) * Math.PI) / 180;
   const theta = ((longitude + 180) * Math.PI) / 180;
-  const radius = earthRadius + altitude;
+  const radius = earthRadius + actorShellOffset + altitude;
 
   return [
     -radius * Math.sin(phi) * Math.cos(theta),
@@ -90,7 +95,121 @@ function makeActor({ latitude, longitude, altitude, metrics, ...actor }: SeedAct
   };
 }
 
-export const simulationActors: SimulationActor[] = [
+const featuredCountryCodeMap: Partial<Record<string, string>> = {
+  australia: "AU",
+  brazil: "BR",
+  china: "CN",
+  egypt: "EG",
+  india: "IN",
+  iran: "IR",
+  israel: "IL",
+  japan: "JP",
+  qatar: "QA",
+  russia: "RU",
+  "saudi-arabia": "SA",
+  "south-africa": "ZA",
+  "south-korea": "KR",
+  taiwan: "TW",
+  turkey: "TR",
+  ukraine: "UA",
+  "united-kingdom": "GB",
+  "united-states": "US"
+};
+
+const hubCountryCodesByZone: Record<string, string[]> = {
+  "North America": ["US", "CA", "MX"],
+  "South America": ["BR", "AR", "CL"],
+  Europe: ["GB", "DE", "FR"],
+  "Eastern Europe": ["UA", "PL", "RO"],
+  Eurasia: ["RU", "KZ", "UZ"],
+  "West Asia": ["TR", "AE", "IL"],
+  Gulf: ["SA", "QA", "AE"],
+  Levant: ["IL", "JO", "LB"],
+  "North Africa": ["EG", "DZ", "MA"],
+  "Sub-Saharan Africa": ["ZA", "NG", "KE"],
+  "South Asia": ["IN", "PK", "BD"],
+  "East Asia": ["CN", "JP", "KR"],
+  Oceania: ["AU", "NZ", "PG"]
+};
+
+function buildRelationshipPairKey(sourceId: string, targetId: string) {
+  return [sourceId, targetId].sort().join(":");
+}
+
+function getActorDistance(source: SimulationActor, target: SimulationActor) {
+  return Math.hypot(
+    source.position[0] - target.position[0],
+    source.position[1] - target.position[1],
+    source.position[2] - target.position[2]
+  );
+}
+
+function enrichFeaturedActor(actor: SimulationActor): SimulationActor {
+  const countryCode = featuredCountryCodeMap[actor.id];
+  const flagEmoji = countryCode ? countryByCodeIndex[countryCode]?.flag : undefined;
+
+  return {
+    ...actor,
+    countryCode,
+    flagEmoji,
+    detailTier: "core"
+  };
+}
+
+function buildGeneratedCountryRelationships(
+  actors: SimulationActor[],
+  existingRelationships: SimulationRelationship[]
+) {
+  const actorByCountryCode = Object.fromEntries(
+    actors
+      .filter((actor) => actor.countryCode)
+      .map((actor) => [actor.countryCode, actor])
+  ) as Record<string, SimulationActor>;
+  const relationshipsByPair = new Set(
+    existingRelationships.map((relationship) =>
+      buildRelationshipPairKey(relationship.sourceId, relationship.targetId)
+    )
+  );
+  const generatedRelationships: SimulationRelationship[] = [];
+  let generatedIndex = 0;
+
+  for (const actor of actors) {
+    if (actor.actorType !== "country" || actor.detailTier !== "context" || !actor.countryCode) {
+      continue;
+    }
+
+    const hub = (hubCountryCodesByZone[actor.zone] ?? [])
+      .map((countryCode) => actorByCountryCode[countryCode])
+      .find((candidate) => candidate && candidate.id !== actor.id);
+
+    if (!hub) {
+      continue;
+    }
+
+    const pairKey = buildRelationshipPairKey(actor.id, hub.id);
+
+    if (relationshipsByPair.has(pairKey)) {
+      continue;
+    }
+
+    relationshipsByPair.add(pairKey);
+
+    generatedRelationships.push({
+      id: `rel-generated-${generatedIndex}`,
+      sourceId: actor.id,
+      targetId: hub.id,
+      relationshipType: hub.detailTier === "core" ? "trade" : "economic_dependency",
+      strength: Math.max(28, Math.round(58 - getActorDistance(actor, hub) * 1.35)),
+      sentiment: hub.detailTier === "core" ? 36 : 24,
+      note: `${actor.label} is linked into the ${hub.label} regional corridor in the expanded world layer.`
+    });
+    generatedIndex += 1;
+  }
+
+  return generatedRelationships;
+}
+
+const featuredSimulationActors: SimulationActor[] = [
   makeActor({
     id: "united-states",
     label: "United States",
@@ -875,11 +994,24 @@ export const simulationActors: SimulationActor[] = [
   })
 ];
 
+const featuredCountryCodes = new Set(
+  Object.values(featuredCountryCodeMap).filter(
+    (countryCode): countryCode is string => Boolean(countryCode)
+  )
+);
+
+const generatedCountrySeeds = buildGeneratedCountryActors(featuredCountryCodes);
+
+export const simulationActors: SimulationActor[] = [
+  ...featuredSimulationActors.map(enrichFeaturedActor),
+  ...generatedCountrySeeds.map(makeActor)
+];
+
 export const actorIndex = Object.fromEntries(
   simulationActors.map((actor) => [actor.id, actor])
 ) as Record<string, SimulationActor>;
 
-export const simulationRelationships: SimulationRelationship[] = [
+const featuredRelationships: SimulationRelationship[] = [
   {
     id: "rel-us-eu",
     sourceId: "united-states",
@@ -1152,16 +1284,23 @@ export const simulationRelationships: SimulationRelationship[] = [
   }
 ];
 
+export const simulationRelationships: SimulationRelationship[] = [
+  ...featuredRelationships,
+  ...buildGeneratedCountryRelationships(simulationActors, featuredRelationships)
+];
+
 export const activeConflictRelationships = simulationRelationships.filter(
   (relationship) => relationship.relationshipType === "active_conflict"
 );
 
-export const simulationHomeCamera: [number, number, number] = [0, 4.6, 21.8];
+export const simulationHomeCamera: [number, number, number] = [0, 5, 24.8];
 
 export function getRelationshipColor(type: SimulationRelationship["relationshipType"]) {
   return relationshipColors[type];
 }
 
 export function getActorRadius(actor: SimulationActor) {
-  return calculateActorRadius(actor.metrics.compositePower, 0.14, 0.045);
+  return actor.detailTier === "context"
+    ? calculateActorRadius(actor.metrics.compositePower, 0.042, 0.017)
+    : calculateActorRadius(actor.metrics.compositePower, 0.074, 0.028);
 }

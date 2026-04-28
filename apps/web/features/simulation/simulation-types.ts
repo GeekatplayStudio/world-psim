@@ -25,6 +25,9 @@ export type SimulationActor = {
   label: string;
   actorType: ActorType;
   position: [number, number, number];
+  countryCode?: string;
+  flagEmoji?: string;
+  detailTier?: "core" | "context";
   zone: string;
   color: string;
   accent: string;

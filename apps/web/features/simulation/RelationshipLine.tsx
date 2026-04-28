@@ -24,12 +24,12 @@ export function RelationshipLine({
   const endVector = new Vector3(...end);
   const arcNormal = startVector.clone().add(endVector).normalize();
   const midpoint = startVector.clone().lerp(endVector, 0.5);
-  const arcHeight = 1.2 + relationship.strength / 55 + (isActiveConflict ? 1.1 : 0);
+  const arcHeight = 1.8 + relationship.strength / 40 + (isActiveConflict ? 1.5 : 0.35);
   const midVector = arcNormal.multiplyScalar(midpoint.length() + arcHeight);
   const mid: [number, number, number] = [midVector.x, midVector.y, midVector.z];
   const lineWidth = Math.max(
-    isActiveConflict ? 4 : 1.5,
-    relationship.strength / (isActiveConflict ? 16 : 28)
+    isActiveConflict ? 4.8 : 1.8,
+    relationship.strength / (isActiveConflict ? 14 : 24)
   );
   const labelClassName = isActiveConflict
     ? "rounded-full border border-rose-400/30 bg-rose-500/15 px-3 py-1 text-[10px] uppercase tracking-[0.28em] text-rose-100 shadow-panel backdrop-blur"
@@ -37,6 +37,15 @@ export function RelationshipLine({
 
   return (
     <group>
+      <QuadraticBezierLine
+        start={start}
+        end={end}
+        mid={mid}
+        color={isActiveConflict ? "#ffe3ea" : "#d8f4ff"}
+        lineWidth={lineWidth + (isActiveConflict ? 2.8 : 1.1)}
+        transparent
+        opacity={isActiveConflict ? 0.18 : isHighlighted ? 0.14 : 0.08}
+      />
       {isActiveConflict ? (
         <QuadraticBezierLine
           start={start}
@@ -45,7 +54,7 @@ export function RelationshipLine({
           color="#ffd4de"
           lineWidth={lineWidth + 2.6}
           transparent
-          opacity={0.14}
+          opacity={0.24}
         />
       ) : null}
       <QuadraticBezierLine
@@ -55,7 +64,7 @@ export function RelationshipLine({
         color={getRelationshipColor(relationship.relationshipType)}
         lineWidth={lineWidth}
         transparent
-        opacity={isActiveConflict ? 0.86 : isHighlighted ? 0.95 : 0.26}
+        opacity={isActiveConflict ? 0.96 : isHighlighted ? 0.98 : 0.48}
         dashed={relationship.relationshipType === "mediation" || relationship.relationshipType === "ceasefire"}
         dashScale={18}
         gapSize={

@@ -172,6 +172,9 @@ export default function SimulationDashboard() {
           shadows
           dpr={[1, 2]}
           style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
+          onCreated={({ camera }) => {
+            camera.lookAt(0, 0, 0);
+          }}
           onPointerMissed={handleClearSelection}
         >
           <SimulationScene
