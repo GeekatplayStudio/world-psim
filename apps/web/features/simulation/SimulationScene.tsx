@@ -81,11 +81,11 @@ export function SimulationScene({
     <>
       <color attach="background" args={["#050b16"]} />
       <fog attach="fog" args={["#050b16", 16, 38]} />
-      <ambientLight intensity={0.85} />
-      <hemisphereLight args={["#9be8ff", "#041120", 0.9]} />
-      <directionalLight position={[10, 10, 7]} intensity={2.4} color="#d9f7ff" />
-      <pointLight position={[-12, 6, -8]} intensity={52} color="#5fd2ff" />
-      <pointLight position={[10, -2, 10]} intensity={32} color="#ffb286" />
+      <ambientLight intensity={0.34} />
+      <hemisphereLight args={["#9be8ff", "#041120", 0.42]} />
+      <directionalLight position={[10, 10, 7]} intensity={1.1} color="#d9f7ff" />
+      <pointLight position={[-12, 6, -8]} intensity={9} color="#5fd2ff" />
+      <pointLight position={[10, -2, 10]} intensity={6} color="#ffb286" />
       <Stars radius={86} depth={26} count={5200} factor={4.8} saturation={0} fade speed={0.7} />
       <Sparkles count={80} scale={[18, 12, 18]} size={6} speed={0.2} color="#8de8ff" />
       <WorldShell />

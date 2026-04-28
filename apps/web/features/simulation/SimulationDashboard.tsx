@@ -99,7 +99,7 @@ export default function SimulationDashboard() {
     (relationship) => relationship.relationshipType === "active_conflict"
   );
   const zoomStage = getZoomStage(cameraDistance);
-  const showWorldRail = zoomStage !== "focus";
+  const showWorldRail = zoomStage === "world";
   const showInspector = Boolean(selectedActor) && zoomStage !== "world";
   const worldZones = new Set(simulationActors.map((actor) => actor.zone)).size;
 
@@ -181,50 +181,45 @@ export default function SimulationDashboard() {
           />
         </Canvas>
 
-        <div className="pointer-events-none absolute inset-0">
+        <div className="absolute inset-0" style={{ pointerEvents: "none" }}>
           <div
             className={cn(
-              "absolute left-4 top-4 max-w-[20rem] rounded-[1.35rem] border border-white/10 bg-slate-950/94 p-3 shadow-panel transition-all duration-500 lg:left-5 lg:top-5",
+              "absolute left-4 top-4 max-w-[15rem] rounded-[1.05rem] border border-white/10 bg-slate-950/94 p-2.5 shadow-panel transition-all duration-500 md:left-auto md:right-5 md:top-5",
               showWorldRail ? "translate-y-0 opacity-100" : "-translate-y-10 opacity-0"
             )}
+            style={{ pointerEvents: "none" }}
           >
-            <div className="flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.28em]">
-              <span className="rounded-full border border-cyan-300/30 bg-cyan-300/10 px-3 py-1 text-cyan-100">
-                Global conflict lattice
+            <p className="text-[10px] uppercase tracking-[0.28em] text-slate-500">World view</p>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.28em]">
+              <span className="rounded-full border border-cyan-300/30 bg-cyan-300/10 px-2.5 py-1 text-cyan-100">
+                Conflict lattice
               </span>
-              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-slate-300">
-                Zoom stage {zoomStage}
+              <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-slate-300">
+                {zoomStage}
               </span>
             </div>
-            <h1 className="mt-3 font-[var(--font-heading)] text-2xl leading-none text-white sm:text-[2rem]">
-              Pull back for the world, then move into a theater.
-            </h1>
-            <p className="mt-2 max-w-md text-[13px] leading-6 text-slate-300">
-              The HUD stays on the perimeter and retreats once you start closing on a node.
+            <p className="mt-3 text-sm leading-6 text-slate-200">
+              Drag to orbit. Scroll to zoom. Right-drag to pan.
             </p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <SceneChip label="Orbit" value="drag" />
-              <SceneChip label="Pan" value="right drag" />
+            <div className="mt-3 grid grid-cols-2 gap-2">
               <SceneChip label="Zoom" value={formatDistance(cameraDistance)} />
               <SceneChip label="Nodes" value={String(simulationActors.length)} />
               <SceneChip label="Conflicts" value={String(activeConflicts.length)} />
               <SceneChip label="Coverage" value={String(worldZones)} />
-              <SceneChip label="Edges" value={String(simulationRelationships.length)} />
             </div>
           </div>
 
           <div
             className={cn(
-              "absolute inset-x-4 bottom-4 overflow-hidden rounded-[1.2rem] border border-white/10 bg-slate-950/94 p-3 shadow-panel transition-all duration-500 lg:inset-x-auto lg:bottom-5 lg:left-5 lg:right-auto lg:w-[18rem]",
+              "absolute inset-x-4 bottom-4 overflow-hidden rounded-[1rem] border border-white/10 bg-slate-950/94 p-2.5 shadow-panel transition-all duration-500 md:inset-x-auto md:bottom-5 md:left-5 md:right-auto md:w-[15rem]",
               showWorldRail ? "translate-y-0 opacity-100" : "translate-y-10 opacity-0"
             )}
+            style={{ pointerEvents: "none" }}
           >
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-[10px] uppercase tracking-[0.3em] text-slate-500">Active conflicts</p>
-                <p className="mt-1 text-xs leading-5 text-slate-400">
-                  Click a hotspot to open its actor drawer.
-                </p>
+                <p className="mt-1 text-[11px] leading-5 text-slate-400">Select a hotspot to inspect the actor.</p>
               </div>
               <span className="rounded-full border border-rose-400/25 bg-rose-500/10 px-3 py-1 text-[10px] uppercase tracking-[0.24em] text-rose-200">
                 {activeConflicts.length} live edges
@@ -245,19 +240,18 @@ export default function SimulationDashboard() {
                     key={relationship.id}
                     type="button"
                     onClick={() => handleSelectActor(source.id)}
-                    className="pointer-events-auto flex items-center justify-between gap-3 rounded-[0.95rem] border border-rose-400/20 bg-rose-500/[0.08] px-3 py-2.5 text-left transition hover:border-rose-300/35 hover:bg-rose-500/[0.12]"
+                    className="pointer-events-auto flex items-center justify-between gap-3 rounded-[0.85rem] border border-rose-400/20 bg-rose-500/[0.08] px-3 py-2 text-left transition hover:border-rose-300/35 hover:bg-rose-500/[0.12]"
+                    style={{ pointerEvents: "auto" }}
                   >
                     <div>
                       <p className="text-[10px] uppercase tracking-[0.26em] text-rose-200">
                         {formatRelationshipLabel(relationship.relationshipType)}
                       </p>
-                      <p className="mt-1 text-sm font-semibold text-white">
+                      <p className="mt-1 text-[13px] font-semibold leading-5 text-white">
                         {source.label} <span className="text-slate-500">vs</span> {target.label}
                       </p>
                     </div>
-                    <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] uppercase tracking-[0.22em] text-slate-300">
-                      open
-                    </span>
+                    <span className="text-[10px] uppercase tracking-[0.22em] text-slate-400">inspect</span>
                   </button>
                 );
               })}
@@ -266,9 +260,10 @@ export default function SimulationDashboard() {
 
           <aside
             className={cn(
-              "pointer-events-auto absolute inset-x-4 bottom-4 top-auto max-h-[54vh] overflow-hidden rounded-[1.6rem] border border-white/10 bg-slate-950/86 shadow-panel backdrop-blur transition-all duration-500 lg:inset-x-auto lg:bottom-6 lg:right-6 lg:top-6 lg:max-h-none lg:w-[21rem]",
+              "pointer-events-auto absolute inset-x-4 bottom-4 top-auto max-h-[54vh] overflow-hidden rounded-[1.6rem] border border-white/10 bg-slate-950/86 shadow-panel backdrop-blur transition-all duration-500 md:inset-x-auto md:bottom-6 md:right-6 md:top-6 md:max-h-none md:w-[21rem]",
               showInspector ? "translate-x-0 opacity-100" : "translate-x-[110%] opacity-0"
             )}
+            style={{ pointerEvents: showInspector ? "auto" : "none" }}
           >
             <div className="flex h-full flex-col">
               {selectedActor ? (

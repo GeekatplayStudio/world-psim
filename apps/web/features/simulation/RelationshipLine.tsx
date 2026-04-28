@@ -64,8 +64,8 @@ export function RelationshipLine({
             : 0
         }
       />
-      {isHighlighted || isActiveConflict ? (
-        <Html position={mid} center>
+      {isHighlighted ? (
+        <Html position={mid} center style={{ pointerEvents: "none" }}>
           <div className={labelClassName}>
             {relationship.relationshipType.replaceAll("_", " ")}
           </div>

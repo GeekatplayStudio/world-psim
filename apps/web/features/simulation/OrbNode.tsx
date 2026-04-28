@@ -33,7 +33,7 @@ export function OrbNode({ actor, isSelected, onSelect }: OrbNodeProps) {
     }
 
     const distance = camera.position.distanceTo(meshRef.current.position);
-  const nextBand = distance < 9.5 ? "near" : distance < 15.5 ? "mid" : "far";
+    const nextBand = distance < 9.5 ? "near" : distance < 15.5 ? "mid" : "far";
 
     setDetailBand((currentBand) => (currentBand === nextBand ? currentBand : nextBand));
 
@@ -47,17 +47,17 @@ export function OrbNode({ actor, isSelected, onSelect }: OrbNodeProps) {
     auraRef.current.rotation.y -= delta * 0.08;
   });
 
-  const showLabel = isSelected || detailBand !== "far" || actor.metrics.compositePower >= 72;
-  const showStats = isSelected || detailBand === "near";
+  const showLabel = isSelected || isHovered || detailBand === "near";
+  const showStats = isSelected;
 
   return (
     <group position={actor.position}>
       <mesh ref={auraRef}>
-        <sphereGeometry args={[radius * 1.08, 32, 32]} />
+        <sphereGeometry args={[radius * 1.04, 24, 24]} />
         <meshBasicMaterial
           color={actor.accent}
           transparent
-          opacity={isSelected ? 0.14 : isHovered ? 0.09 : 0.04}
+          opacity={isSelected ? 0.11 : isHovered ? 0.06 : 0.025}
           wireframe
         />
       </mesh>
@@ -77,18 +77,18 @@ export function OrbNode({ actor, isSelected, onSelect }: OrbNodeProps) {
           setIsHovered(false);
         }}
       >
-        <sphereGeometry args={[radius, 48, 48]} />
+        <sphereGeometry args={[radius, 36, 36]} />
         <meshStandardMaterial
           color={actor.color}
           emissive={actor.accent}
-          emissiveIntensity={isSelected ? 2.2 : isHovered ? 1.65 : 1.1}
-          metalness={0.24}
-          roughness={0.18}
+          emissiveIntensity={isSelected ? 0.9 : isHovered ? 0.6 : 0.35}
+          metalness={0.04}
+          roughness={0.68}
         />
       </mesh>
 
       {showLabel ? (
-        <Html position={[0, radius + 0.7, 0]} center>
+        <Html position={[0, radius + 0.55, 0]} center style={{ pointerEvents: "none" }}>
           <div className="rounded-full border border-white/10 bg-slate-950/85 px-3 py-1 text-[10px] uppercase tracking-[0.28em] text-slate-100 shadow-panel backdrop-blur">
             {actor.label}
           </div>
@@ -96,7 +96,7 @@ export function OrbNode({ actor, isSelected, onSelect }: OrbNodeProps) {
       ) : null}
 
       {showStats ? (
-        <Html position={[radius + 0.7, 0.15, 0]} transform occlude>
+        <Html position={[radius + 0.55, 0.15, 0]} transform occlude style={{ pointerEvents: "none" }}>
           <div className="w-40 rounded-[1.2rem] border border-white/10 bg-slate-950/88 p-3 text-xs text-slate-100 shadow-panel backdrop-blur">
             <p className="font-semibold uppercase tracking-[0.24em] text-cyan-100">
               {actor.zone}

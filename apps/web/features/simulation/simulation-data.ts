@@ -1156,12 +1156,12 @@ export const activeConflictRelationships = simulationRelationships.filter(
   (relationship) => relationship.relationshipType === "active_conflict"
 );
 
-export const simulationHomeCamera: [number, number, number] = [0, 5.2, 18.4];
+export const simulationHomeCamera: [number, number, number] = [0, 4.6, 21.8];
 
 export function getRelationshipColor(type: SimulationRelationship["relationshipType"]) {
   return relationshipColors[type];
 }
 
 export function getActorRadius(actor: SimulationActor) {
-  return calculateActorRadius(actor.metrics.compositePower, 0.46, 0.14);
+  return calculateActorRadius(actor.metrics.compositePower, 0.14, 0.045);
 }
