@@ -10,9 +10,16 @@ import {
   buildGeneratedCountryActors,
   countryByCodeIndex
 } from "./simulation-country-layer";
-
-const earthRadius = 7.45;
-const actorShellOffset = 1.05;
+import {
+  clamp,
+  projectLatitudeToPlane,
+  projectLongitudeToPlane
+} from "./simulation-geo";
+import {
+  buildConflictRelationships,
+  getConflictTone,
+  getCountryConflictSummary
+} from "./simulation-conflict-layer";
 
 const relationshipColors: Record<SimulationRelationship["relationshipType"], string> = {
   alliance: "#20d67b",
@@ -33,7 +40,16 @@ const relationshipColors: Record<SimulationRelationship["relationshipType"], str
   unknown: "#777777"
 };
 
-type SeedActor = Omit<SimulationActor, "position" | "metrics"> & {
+type SeedActor = Omit<
+  SimulationActor,
+  | "position"
+  | "metrics"
+  | "conflictBurden"
+  | "conflictNormalized"
+  | "conflictCount"
+  | "peaceIndex"
+  | "highestConflictTier"
+> & {
   latitude: number;
   longitude: number;
   altitude?: number;
@@ -71,27 +87,64 @@ function makeSource(
   };
 }
 
-function globePosition(
+function planarPosition(
   latitude: number,
   longitude: number,
-  altitude = 0.9
+  normalizedBurden: number,
+  altitude = 0.9,
+  detailTier: SimulationActor["detailTier"] = "core"
 ): [number, number, number] {
-  const phi = ((90 - latitude) * Math.PI) / 180;
-  const theta = ((longitude + 180) * Math.PI) / 180;
-  const radius = earthRadius + actorShellOffset + altitude;
+  const altitudeBias = (altitude - 0.82) * (detailTier === "core" ? 2.35 : 1.55);
+  const tierBias = detailTier === "core" ? 0.42 : -0.04;
+  const y = 2.2 + altitudeBias + tierBias - normalizedBurden * 6.4;
 
   return [
-    -radius * Math.sin(phi) * Math.cos(theta),
-    radius * Math.cos(phi),
-    radius * Math.sin(phi) * Math.sin(theta)
+    projectLongitudeToPlane(longitude),
+    Number(y.toFixed(3)),
+    projectLatitudeToPlane(latitude)
   ];
 }
 
 function makeActor({ latitude, longitude, altitude, metrics, ...actor }: SeedActor): SimulationActor {
+  const countryCode = actor.countryCode ?? featuredCountryCodeMap[actor.id];
+  const conflictLookupCountryCode = countryCode ?? actorConflictProxyCountryCodeMap[actor.id];
+  const conflictSummary = getCountryConflictSummary(conflictLookupCountryCode);
+  const tone = getConflictTone(conflictSummary.normalizedBurden, conflictSummary.peaceIndex);
+  const detailTier = actor.detailTier ?? "core";
+  const adjustedMetrics = {
+    ...metrics,
+    instability: clamp(
+      12,
+      Math.round(metrics.instability * 0.58 + conflictSummary.normalizedBurden * 88),
+      98
+    ),
+    confidence: clamp(
+      18,
+      Math.round(metrics.confidence - conflictSummary.normalizedBurden * 22 + conflictSummary.peaceIndex * 6),
+      92
+    )
+  };
+
   return {
     ...actor,
-    position: globePosition(latitude, longitude, altitude),
-    metrics: makeMetrics(metrics)
+    countryCode,
+    flagEmoji: countryCode ? countryByCodeIndex[countryCode]?.flag ?? actor.flagEmoji : actor.flagEmoji,
+    detailTier,
+    color: tone.color,
+    accent: tone.accent,
+    position: planarPosition(
+      latitude,
+      longitude,
+      conflictSummary.normalizedBurden,
+      altitude,
+      detailTier
+    ),
+    metrics: makeMetrics(adjustedMetrics),
+    conflictBurden: conflictSummary.burden,
+    conflictNormalized: conflictSummary.normalizedBurden,
+    conflictCount: conflictSummary.conflictCount,
+    peaceIndex: conflictSummary.peaceIndex,
+    highestConflictTier: conflictSummary.highestTier
   };
 }
 
@@ -116,6 +169,13 @@ const featuredCountryCodeMap: Partial<Record<string, string>> = {
   "united-states": "US"
 };
 
+const actorConflictProxyCountryCodeMap: Partial<Record<string, string>> = {
+  hamas: "PS",
+  hezbollah: "LB",
+  houthis: "YE",
+  taiwan: "TW"
+};
+
 const hubCountryCodesByZone: Record<string, string[]> = {
   "North America": ["US", "CA", "MX"],
   "South America": ["BR", "AR", "CL"],
@@ -132,8 +192,81 @@ const hubCountryCodesByZone: Record<string, string[]> = {
   Oceania: ["AU", "NZ", "PG"]
 };
 
+const zoneTradeCategoriesByZone: Record<string, string[]> = {
+  "North America": ["energy", "manufacturing", "food"],
+  "South America": ["food", "minerals", "energy"],
+  Europe: ["machinery", "finance", "pharma"],
+  "Eastern Europe": ["grain", "metals", "machinery"],
+  Eurasia: ["energy", "metals", "grain"],
+  "West Asia": ["energy", "logistics", "defense"],
+  Gulf: ["oil", "petrochemicals", "finance"],
+  Levant: ["services", "shipping", "food"],
+  "North Africa": ["energy", "phosphates", "shipping"],
+  "Sub-Saharan Africa": ["minerals", "agriculture", "energy"],
+  "South Asia": ["textiles", "services", "pharma"],
+  "East Asia": ["electronics", "shipping", "manufacturing"],
+  Oceania: ["minerals", "food", "energy"]
+};
+
+const tradeCategoryOverridesByCountryCode: Partial<Record<string, string[]>> = {
+  AU: ["minerals", "lng", "food"],
+  BR: ["soy", "iron ore", "energy"],
+  CA: ["energy", "minerals", "lumber"],
+  CN: ["electronics", "shipping", "manufacturing"],
+  DE: ["machinery", "autos", "chemicals"],
+  FR: ["aerospace", "luxury", "agriculture"],
+  GB: ["finance", "services", "energy"],
+  IN: ["services", "pharma", "textiles"],
+  JP: ["electronics", "autos", "machinery"],
+  KR: ["chips", "ships", "autos"],
+  MX: ["autos", "manufacturing", "food"],
+  NG: ["oil", "lng", "agriculture"],
+  QA: ["lng", "finance", "aviation"],
+  RU: ["oil", "gas", "metals"],
+  SA: ["oil", "petrochemicals", "finance"],
+  SG: ["shipping", "finance", "electronics"],
+  TR: ["manufacturing", "shipping", "food"],
+  US: ["technology", "energy", "finance"],
+  ZA: ["metals", "minerals", "agriculture"]
+};
+
 function buildRelationshipPairKey(sourceId: string, targetId: string) {
   return [sourceId, targetId].sort().join(":");
+}
+
+function formatTradeCategories(categories: string[]) {
+  if (categories.length === 1) {
+    return categories[0];
+  }
+
+  if (categories.length === 2) {
+    return `${categories[0]} and ${categories[1]}`;
+  }
+
+  return `${categories[0]}, ${categories[1]}, and ${categories[2]}`;
+}
+
+function getMajorTradeCategories(actor: SimulationActor, hub: SimulationActor) {
+  const actorCountry = actor.countryCode ? countryByCodeIndex[actor.countryCode] : null;
+  const baseCategories =
+    tradeCategoryOverridesByCountryCode[actor.countryCode ?? ""] ??
+    zoneTradeCategoriesByZone[actor.zone] ??
+    ["manufacturing", "food", "shipping"];
+  const normalizedCategories = [...baseCategories];
+
+  if (actorCountry?.landlocked) {
+    const shippingIndex = normalizedCategories.findIndex((category) => category === "shipping");
+
+    if (shippingIndex >= 0) {
+      normalizedCategories[shippingIndex] = "transit";
+    }
+  }
+
+  if (!actorCountry?.landlocked && !normalizedCategories.includes("shipping") && hub.detailTier === "core") {
+    normalizedCategories.push("shipping");
+  }
+
+  return Array.from(new Set(normalizedCategories)).slice(0, 3);
 }
 
 function getActorDistance(source: SimulationActor, target: SimulationActor) {
@@ -142,18 +275,6 @@ function getActorDistance(source: SimulationActor, target: SimulationActor) {
     source.position[1] - target.position[1],
     source.position[2] - target.position[2]
   );
-}
-
-function enrichFeaturedActor(actor: SimulationActor): SimulationActor {
-  const countryCode = featuredCountryCodeMap[actor.id];
-  const flagEmoji = countryCode ? countryByCodeIndex[countryCode]?.flag : undefined;
-
-  return {
-    ...actor,
-    countryCode,
-    flagEmoji,
-    detailTier: "core"
-  };
 }
 
 function buildGeneratedCountryRelationships(
@@ -194,6 +315,8 @@ function buildGeneratedCountryRelationships(
 
     relationshipsByPair.add(pairKey);
 
+    const tradeCategories = getMajorTradeCategories(actor, hub);
+
     generatedRelationships.push({
       id: `rel-generated-${generatedIndex}`,
       sourceId: actor.id,
@@ -201,7 +324,8 @@ function buildGeneratedCountryRelationships(
       relationshipType: hub.detailTier === "core" ? "trade" : "economic_dependency",
       strength: Math.max(28, Math.round(58 - getActorDistance(actor, hub) * 1.35)),
       sentiment: hub.detailTier === "core" ? 36 : 24,
-      note: `${actor.label} is linked into the ${hub.label} regional corridor in the expanded world layer.`
+      note: `${actor.label} is linked into the ${hub.label} regional corridor through ${formatTradeCategories(tradeCategories)}.`,
+      tradeCategories
     });
     generatedIndex += 1;
   }
@@ -1003,7 +1127,7 @@ const featuredCountryCodes = new Set(
 const generatedCountrySeeds = buildGeneratedCountryActors(featuredCountryCodes);
 
 export const simulationActors: SimulationActor[] = [
-  ...featuredSimulationActors.map(enrichFeaturedActor),
+  ...featuredSimulationActors,
   ...generatedCountrySeeds.map(makeActor)
 ];
 
@@ -1208,7 +1332,8 @@ const featuredRelationships: SimulationRelationship[] = [
     relationshipType: "economic_dependency",
     strength: 77,
     sentiment: -12,
-    note: "Strategic rivalry is constrained and complicated by deep trade and technology interdependence."
+    note: "Strategic rivalry is constrained and complicated by deep trade and technology interdependence.",
+    tradeCategories: ["electronics", "consumer goods", "semiconductors"]
   },
   {
     id: "rel-china-russia",
@@ -1217,7 +1342,8 @@ const featuredRelationships: SimulationRelationship[] = [
     relationshipType: "trade",
     strength: 68,
     sentiment: 26,
-    note: "Trade and diplomatic cover make this a stabilizing edge for Moscow's wider position."
+    note: "Trade and diplomatic cover make this a stabilizing edge for Moscow's wider position.",
+    tradeCategories: ["oil", "gas", "industrial goods"]
   },
   {
     id: "rel-india-china",
@@ -1262,7 +1388,8 @@ const featuredRelationships: SimulationRelationship[] = [
     relationshipType: "trade",
     strength: 51,
     sentiment: 29,
-    note: "Commodity, infrastructure, and Global South diplomacy give this edge steady weight."
+    note: "Commodity, infrastructure, and Global South diplomacy give this edge steady weight.",
+    tradeCategories: ["metals", "minerals", "manufacturing"]
   },
   {
     id: "rel-brazil-china",
@@ -1271,7 +1398,8 @@ const featuredRelationships: SimulationRelationship[] = [
     relationshipType: "trade",
     strength: 62,
     sentiment: 34,
-    note: "Agriculture, minerals, and industrial demand make this one of the stronger South-South ties."
+    note: "Agriculture, minerals, and industrial demand make this one of the stronger South-South ties.",
+    tradeCategories: ["soy", "iron ore", "oil"]
   },
   {
     id: "rel-saudi-china",
@@ -1280,20 +1408,30 @@ const featuredRelationships: SimulationRelationship[] = [
     relationshipType: "trade",
     strength: 61,
     sentiment: 31,
-    note: "Energy flows and capital alignment continue to deepen this Gulf-Asia connection."
+    note: "Energy flows and capital alignment continue to deepen this Gulf-Asia connection.",
+    tradeCategories: ["oil", "petrochemicals", "construction"]
   }
 ];
 
+const generatedConflictRelationships = buildConflictRelationships(
+  simulationActors,
+  featuredRelationships
+);
+
 export const simulationRelationships: SimulationRelationship[] = [
   ...featuredRelationships,
-  ...buildGeneratedCountryRelationships(simulationActors, featuredRelationships)
+  ...generatedConflictRelationships,
+  ...buildGeneratedCountryRelationships(simulationActors, [
+    ...featuredRelationships,
+    ...generatedConflictRelationships
+  ])
 ];
 
 export const activeConflictRelationships = simulationRelationships.filter(
   (relationship) => relationship.relationshipType === "active_conflict"
 );
 
-export const simulationHomeCamera: [number, number, number] = [0, 5, 24.8];
+export const simulationHomeCamera: [number, number, number] = [0, 7.8, 29.5];
 
 export function getRelationshipColor(type: SimulationRelationship["relationshipType"]) {
   return relationshipColors[type];
@@ -1301,6 +1439,6 @@ export function getRelationshipColor(type: SimulationRelationship["relationshipT
 
 export function getActorRadius(actor: SimulationActor) {
   return actor.detailTier === "context"
-    ? calculateActorRadius(actor.metrics.compositePower, 0.042, 0.017)
-    : calculateActorRadius(actor.metrics.compositePower, 0.074, 0.028);
+    ? calculateActorRadius(actor.metrics.compositePower, 0.03, 0.012)
+    : calculateActorRadius(actor.metrics.compositePower, 0.064, 0.023);
 }

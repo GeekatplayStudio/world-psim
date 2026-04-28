@@ -2,7 +2,16 @@ import countries, { type Country } from "world-countries";
 
 import type { ActorMetricsView, SimulationActor } from "./simulation-types";
 
-export type CountryLayerSeedActor = Omit<SimulationActor, "position" | "metrics"> & {
+export type CountryLayerSeedActor = Omit<
+  SimulationActor,
+  | "position"
+  | "metrics"
+  | "conflictBurden"
+  | "conflictNormalized"
+  | "conflictCount"
+  | "peaceIndex"
+  | "highestConflictTier"
+> & {
   latitude: number;
   longitude: number;
   altitude?: number;
@@ -24,6 +33,8 @@ const zonePaletteByName: Record<string, { color: string; accent: string }> = {
   "East Asia": { color: "#f07c7c", accent: "#ffd9d9" },
   Oceania: { color: "#7ee1c6", accent: "#d9fff1" }
 };
+
+const defaultZonePalette = { color: "#93bfff", accent: "#eef5ff" };
 
 const strategicCountryBonuses: Record<string, number> = {
   AR: 8,
@@ -124,8 +135,8 @@ function getCountryZone(country: Country) {
   return country.region || "Europe";
 }
 
-function getCountryPalette(country: Country) {
-  return zonePaletteByName[getCountryZone(country)] ?? zonePaletteByName["Europe"];
+function getCountryPalette(country: Country): { color: string; accent: string } {
+  return zonePaletteByName[getCountryZone(country)] ?? defaultZonePalette;
 }
 
 function getCountryHighlights(country: Country) {
@@ -247,7 +258,7 @@ export function applyRegionalDeclutter<Actor extends {
     const ring = Math.floor(order / 6) + 1;
     const slot = order % 6;
     const angle = (slot / 6) * Math.PI * 2 + ring * 0.42;
-    const spread = actor.detailTier === "context" ? 1.1 : 0.72;
+    const spread = actor.detailTier === "context" ? 0.36 : 0.54;
     const latitudeOffset = Math.cos(angle) * ring * spread;
     const longitudeOffset =
       (Math.sin(angle) * ring * spread * 1.7) /
@@ -257,7 +268,7 @@ export function applyRegionalDeclutter<Actor extends {
       ...actor,
       latitude: clamp(-82, actor.latitude + latitudeOffset, 82),
       longitude: normalizeLongitude(actor.longitude + longitudeOffset),
-      altitude: (actor.altitude ?? 0.8) + ring * (actor.detailTier === "context" ? 0.12 : 0.06)
+      altitude: (actor.altitude ?? 0.8) + ring * (actor.detailTier === "context" ? 0.045 : 0.06)
     };
   });
 }

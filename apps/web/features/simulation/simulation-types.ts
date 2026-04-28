@@ -1,5 +1,7 @@
 import type { ActorType, RelationshipType } from "@balancesphere/shared";
 
+export type ConflictTier = "major" | "minor" | "conflict" | "skirmish";
+
 export type BriefingSource = {
   id: string;
   title: string;
@@ -25,6 +27,11 @@ export type SimulationActor = {
   label: string;
   actorType: ActorType;
   position: [number, number, number];
+  conflictBurden: number;
+  conflictNormalized: number;
+  conflictCount: number;
+  peaceIndex: number;
+  highestConflictTier: ConflictTier | null;
   countryCode?: string;
   flagEmoji?: string;
   detailTier?: "core" | "context";
@@ -46,4 +53,5 @@ export type SimulationRelationship = {
   strength: number;
   sentiment: number;
   note: string;
+  tradeCategories?: string[];
 };
