@@ -10,6 +10,7 @@ export default tseslint.config(
     ignores: [
       "**/node_modules/**",
       "**/.next/**",
+      "**/next-env.d.ts",
       "**/dist/**",
       "**/coverage/**",
       "**/.turbo/**"
@@ -43,6 +44,12 @@ export default tseslint.config(
       ...react.configs.recommended.rules,
       ...reactHooks.configs.recommended.rules,
       "react/react-in-jsx-scope": "off"
+    }
+  },
+  {
+    files: ["apps/web/features/simulation/**/*.{ts,tsx}"],
+    rules: {
+      "react/no-unknown-property": "off"
     }
   },
   prettier

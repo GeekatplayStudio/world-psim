@@ -25,6 +25,7 @@ export type SimulationActor = {
   label: string;
   actorType: ActorType;
   position: [number, number, number];
+  zone: string;
   color: string;
   accent: string;
   summary: string;

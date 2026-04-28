@@ -33,7 +33,7 @@ export function OrbNode({ actor, isSelected, onSelect }: OrbNodeProps) {
     }
 
     const distance = camera.position.distanceTo(meshRef.current.position);
-    const nextBand = distance < 6 ? "near" : distance < 10 ? "mid" : "far";
+  const nextBand = distance < 9.5 ? "near" : distance < 15.5 ? "mid" : "far";
 
     setDetailBand((currentBand) => (currentBand === nextBand ? currentBand : nextBand));
 
@@ -43,11 +43,11 @@ export function OrbNode({ actor, isSelected, onSelect }: OrbNodeProps) {
     meshRef.current.scale.lerp(nextScale, 1 - Math.exp(-delta * 8));
     auraRef.current.scale.lerp(nextScale.multiplyScalar(1.18), 1 - Math.exp(-delta * 7));
 
-    meshRef.current.rotation.y += delta * 0.18;
-    auraRef.current.rotation.y -= delta * 0.1;
+    meshRef.current.rotation.y += delta * 0.12;
+    auraRef.current.rotation.y -= delta * 0.08;
   });
 
-  const showLabel = isSelected || detailBand !== "far";
+  const showLabel = isSelected || detailBand !== "far" || actor.metrics.compositePower >= 72;
   const showStats = isSelected || detailBand === "near";
 
   return (
@@ -81,14 +81,14 @@ export function OrbNode({ actor, isSelected, onSelect }: OrbNodeProps) {
         <meshStandardMaterial
           color={actor.color}
           emissive={actor.accent}
-          emissiveIntensity={isSelected ? 1.4 : isHovered ? 1.05 : 0.7}
-          metalness={0.3}
-          roughness={0.24}
+          emissiveIntensity={isSelected ? 2.2 : isHovered ? 1.65 : 1.1}
+          metalness={0.24}
+          roughness={0.18}
         />
       </mesh>
 
       {showLabel ? (
-        <Html position={[0, radius + 0.8, 0]} center>
+        <Html position={[0, radius + 0.7, 0]} center>
           <div className="rounded-full border border-white/10 bg-slate-950/85 px-3 py-1 text-[10px] uppercase tracking-[0.28em] text-slate-100 shadow-panel backdrop-blur">
             {actor.label}
           </div>
@@ -96,11 +96,12 @@ export function OrbNode({ actor, isSelected, onSelect }: OrbNodeProps) {
       ) : null}
 
       {showStats ? (
-        <Html position={[radius + 0.9, 0.2, 0]} transform occlude>
-          <div className="w-44 rounded-2xl border border-white/10 bg-slate-950/88 p-3 text-xs text-slate-100 shadow-panel backdrop-blur">
+        <Html position={[radius + 0.7, 0.15, 0]} transform occlude>
+          <div className="w-40 rounded-[1.2rem] border border-white/10 bg-slate-950/88 p-3 text-xs text-slate-100 shadow-panel backdrop-blur">
             <p className="font-semibold uppercase tracking-[0.24em] text-cyan-100">
-              {actor.region}
+              {actor.zone}
             </p>
+            <p className="mt-1 text-[11px] text-slate-500">{actor.region}</p>
             <div className="mt-2 space-y-1 text-slate-300">
               <div className="flex items-center justify-between">
                 <span>Composite</span>
